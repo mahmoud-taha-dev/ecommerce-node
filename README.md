@@ -130,7 +130,7 @@ WHERE
      AND EXTRACT(YEAR FROM Orders.order_date) = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')
 GROUP BY
     Orders.customer_id, Customer.first_name, Customer.last_name
-HAVING 
+HAVING
     SUM(Orders.total_amount) > 500
 ORDER BY
     total_order_amount DESC;
@@ -143,4 +143,10 @@ ALTER TABLE Orders
 ADD COLUMN customer_first_name VARCHAR(20),
 ADD COLUMN customer_last_name VARCHAR(20),
 ADD COLUMN customer_email VARCHAR(100);
+```
+
+### A SQL query to search for all products with the word "camera" in either the product name or description
+
+```
+SELECT * FROM Product WHERE name ILIKE '%camera%' OR description ILIKE '%camera%';
 ```
