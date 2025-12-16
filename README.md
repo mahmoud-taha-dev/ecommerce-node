@@ -39,6 +39,7 @@ CREATE TABLE Product
   category_id UUID,
   name VARCHAR(50) NOT NULL,
   description VARCHAR(250),
+  author VARCHAR(50) NOT NULL,
   price NUMERIC(6,2) NOT NULL DEFAULT 0 CHECK (price >= 0),
   stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -68,6 +69,22 @@ CREATE TABLE Order_details
   PRIMARY KEY (order_detail_id),
   FOREIGN KEY (order_id) REFERENCES Orders(order_id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES Product(product_id)
+);
+
+CREATE TABLE Sale_History
+(
+    sale_id UUID DEFAULT gen_random_uuid(),
+    order_id UUID NOT NULL,
+    customer_id UUID NOT NULL,
+    product_id UUID NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price NUMERIC(6,2) NOT NULL,
+    total_amount NUMERIC(10,2) NOT NULL,
+    order_date TIMESTAMP NOT NULL,
+    PRIMARY KEY (sale_id),
+    FOREIGN KEY (order_id) REFERENCES Orders(order_id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES Customer(customer_id),
+    FOREIGN KEY (product_id) REFERENCES Product(product_id)
 );
 ```
 
@@ -149,4 +166,77 @@ ADD COLUMN customer_email VARCHAR(100);
 
 ```
 SELECT * FROM Product WHERE name ILIKE '%camera%' OR description ILIKE '%camera%';
+```
+
+### A trigger to update Sale_History table when a new order is placed
+
+```
+CREATE OR REPLACE FUNCTION create_sale_history()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO Sale_History(
+        order_id,
+        customer_id,
+        product_id,
+        quantity,
+        unit_price,
+        total_amount,
+        order_date
+    )
+    SELECT
+        Order_details.order_id,
+        Orders.customer_id,
+        Order_details.product_id,
+        Order_details.quantity,
+        Order_details.unit_price,
+        Order_details.quantity * Order_details.unit_price,
+        Orders.order_date
+    FROM Order_details
+    JOIN Orders ON Orders.order_id = Order_details.order_id
+    WHERE Order_details.order_detail_id = NEW.order_detail_id;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER after_order_detail_insert
+AFTER INSERT ON Order_details
+FOR EACH ROW
+EXECUTE FUNCTION create_sale_history();
+```
+
+### A transaction query to lock the field quantity with product id = 211 from being updated
+
+```
+BEGIN;
+
+SELECT quantity
+FROM Product
+WHERE product_id = 211
+FOR UPDATE;
+
+COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+END;
+```
+
+### A transaction query to lock row with product id = 211 from being updated
+
+```
+BEGIN;
+
+SELECT *
+FROM Product
+WHERE product_id = 211
+FOR UPDATE;
+
+COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+END;
 ```
