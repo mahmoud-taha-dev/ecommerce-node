@@ -168,6 +168,30 @@ ADD COLUMN customer_email VARCHAR(100);
 SELECT * FROM Product WHERE name ILIKE '%camera%' OR description ILIKE '%camera%';
 ```
 
+### A SQL query to suggest popular products in the same category for the same author, excluding the viewed product from the recommendations
+
+```
+SELECT p.product_id, p.name, p.category_id, p.author
+FROM Product p
+WHERE p.category_id IN (
+    SELECT DISTINCT pr.category_id
+    FROM Product pr
+    JOIN CustomerHistory ch ON pr.product_id = ch.product_id
+    WHERE ch.customer_id = <customer_id>
+)
+AND p.author IN (
+    SELECT DISTINCT pr.author
+    FROM Product pr
+    JOIN CustomerHistory ch ON pr.product_id = ch.product_id
+    WHERE ch.customer_id = <customer_id>
+)
+AND p.product_id NOT IN (
+    SELECT product_id
+    FROM CustomerHistory
+    WHERE customer_id = <customer_id>
+)
+```
+
 ### A trigger to update Sale_History table when a new order is placed
 
 ```
