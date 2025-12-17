@@ -168,6 +168,24 @@ ADD COLUMN customer_email VARCHAR(100);
 SELECT * FROM Product WHERE name ILIKE '%camera%' OR description ILIKE '%camera%';
 ```
 
+### A Full Text Search
+
+```
+ALTER TABLE product
+ADD COLUMN search_vector tsvector
+GENERATED ALWAYS AS (
+  to_tsvector('english', name || ' ' || description)
+) STORED;
+
+CREATE INDEX idx_text_search
+ON product
+USING GIN (search_vector);
+
+SELECT *
+FROM product
+WHERE search_vector @@ plainto_tsquery('english', 'camera');
+```
+
 ### A SQL query to suggest popular products in the same category for the same author, excluding the viewed product from the recommendations
 
 ```
